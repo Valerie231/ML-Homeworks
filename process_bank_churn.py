@@ -17,7 +17,7 @@ def split_data(df: pd.DataFrame, test_size: float = 0.25, random_state: int = 42
     return train_df, val_df
 
 
-def extract_columns(df: pd.DataFrame, input_columns: list, target_column: list) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def extract_columns(df: pd.DataFrame, input_columns: list, target_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Extract input features and target columns from the dataset.
 
@@ -53,13 +53,15 @@ def encode_categorical_data(train_inputs: pd.DataFrame, val_inputs: pd.DataFrame
     :param categorical_cols: List of categorical column names
     :return: Tuple containing transformed training and validation DataFrames
     """
-    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
+    encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
     encoder.fit(train_inputs[categorical_cols])
-    encoded_cols = list(encoder.get_feature_names_out(categorical_cols))
 
-    # Apply the transformation
-    train_inputs[encoded_cols] = encoder.transform(train_inputs[categorical_cols])
-    val_inputs[encoded_cols] = encoder.transform(val_inputs[categorical_cols])
+    encoded_train_inputs = pd.DataFrame(encoder.transform(train_inputs[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols), index=train_inputs.index)
+    train_inputs = pd.concat([train_inputs.drop(columns=categorical_cols), encoded_train_inputs], axis=1)
+
+    encoded_val_inputs = pd.DataFrame(encoder.transform(val_inputs[categorical_cols]), columns=encoder.get_feature_names_out(categorical_cols), index=val_inputs.index)
+    val_inputs = pd.concat([val_inputs.drop(columns=categorical_cols), encoded_val_inputs], axis=1)
+
 
     return train_inputs, val_inputs
 
@@ -94,7 +96,7 @@ def preprocess_data(df: pd.DataFrame, scale_numeric: bool = True) -> Tuple[pd.Da
     # Predefined input and target columns
     input_columns = ['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance',
                      'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']
-    target_column = ['Exited']
+    target_column = 'Exited'
 
     # Split the data
     train_df, val_df = split_data(df)
